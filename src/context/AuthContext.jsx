@@ -1,34 +1,15 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 
-const AuthContext = createContext(null)
-
+const AuthContext = createContext({})
 export const useAuth = () => useContext(AuthContext)
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
+  const [artisanProfile, setArtisanProfile] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  // ✅ Fetch user profile from database
-  async function fetchProfile(userId) {
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', userId)
-      .single()
-
-    if (error) {
-      console.error('Error fetching profile:', error)
-      setProfile(null)
-    } else {
-      setProfile(data)
-    }
-
-    setLoading(false)
-  }
-
-  // ✅ Check session + listen for auth changes
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
@@ -37,6 +18,7 @@ export function AuthProvider({ children }) {
         fetchProfile(session.user.id)
       } else {
         setProfile(null)
+        setArtisanProfile(null)
         setLoading(false)
       }
     })
@@ -49,6 +31,7 @@ export function AuthProvider({ children }) {
           fetchProfile(session.user.id)
         } else {
           setProfile(null)
+          setArtisanProfile(null)
           setLoading(false)
         }
       }
@@ -57,7 +40,67 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe()
   }, [])
 
-  // ✅ FIXED SIGNUP FUNCTION
+  async function fetchProfile(userId) {
+    setLoading(true)
+
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', userId)
+      .single()
+
+    if (userError) {
+      console.error('Error fetching user profile:', userError)
+      setProfile(null)
+      setArtisanProfile(null)
+      setLoading(false)
+      return
+    }
+
+    setProfile(userData)
+
+    if (userData?.role === 'artisan') {
+      const { data: artisanData, error: artisanError } = await supabase
+        .from('artisan_profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .single()
+
+      if (artisanError) {
+        setArtisanProfile(null)
+      } else {
+        setArtisanProfile(artisanData || null)
+      }
+    } else {
+      setArtisanProfile(null)
+    }
+
+    setLoading(false)
+  }
+
+  async function refreshProfile() {
+    if (!user) return
+    await fetchProfile(user.id)
+  }
+
+  async function refreshArtisanProfile() {
+    if (!user) return
+
+    const { data, error } = await supabase
+      .from('artisan_profiles')
+      .select('*')
+      .eq('user_id', user.id)
+      .single()
+
+    if (error) {
+      console.error('Error refreshing artisan profile:', error)
+      setArtisanProfile(null)
+      return
+    }
+
+    setArtisanProfile(data || null)
+  }
+
   async function signUp(email, password, fullName, role) {
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -72,25 +115,16 @@ export function AuthProvider({ children }) {
 
     if (error) return { error }
 
-    // 🔥 Wait for trigger to create user row
     if (data.user) {
-      await new Promise((resolve) => setTimeout(resolve, 500))
-
-      const { error: updateError } = await supabase
+      await supabase
         .from('users')
         .update({ full_name: fullName })
         .eq('id', data.user.id)
-
-      if (updateError) {
-        console.error('Error updating full name:', updateError)
-        return { error: updateError }
-      }
     }
 
     return { data }
   }
 
-  // ✅ LOGIN
   async function signIn(email, password) {
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -100,7 +134,6 @@ export function AuthProvider({ children }) {
     return { data, error }
   }
 
-  // ✅ LOGOUT
   async function signOut() {
     const { error } = await supabase.auth.signOut()
     return { error }
@@ -109,10 +142,14 @@ export function AuthProvider({ children }) {
   const value = {
     user,
     profile,
+    artisanProfile,
     loading,
     signUp,
     signIn,
     signOut,
+    refreshProfile,
+    refreshArtisanProfile,
+    fetchProfile,
   }
 
   return (
