@@ -82,6 +82,14 @@ export default function SubmitVerification() {
   }, [previews])
 
   function handleFileChange(key, e) {
+    // ✅ FIX: Block file changes while pending or approved
+    if (
+      existingSubmission?.status === 'pending' ||
+      existingSubmission?.status === 'approved'
+    ) {
+      return
+    }
+
     const file = e.target.files[0]
     if (!file) return
 
@@ -102,14 +110,19 @@ export default function SubmitVerification() {
       return
     }
 
-    if (previews[key] && previews[key] !== 'pdf' && previews[key].startsWith('blob:')) {
+    if (
+      previews[key] &&
+      previews[key] !== 'pdf' &&
+      previews[key].startsWith('blob:')
+    ) {
       URL.revokeObjectURL(previews[key])
     }
 
     setFiles((prev) => ({ ...prev, [key]: file }))
     setPreviews((prev) => ({
       ...prev,
-      [key]: file.type === 'application/pdf' ? 'pdf' : URL.createObjectURL(file),
+      [key]:
+        file.type === 'application/pdf' ? 'pdf' : URL.createObjectURL(file),
     }))
     setError('')
   }
@@ -136,22 +149,25 @@ export default function SubmitVerification() {
       return
     }
 
-    const hasExistingRequiredDocs =
-      existingSubmission?.id_document_url &&
-      existingSubmission?.cv_url &&
-      existingSubmission?.proof_of_work_url
+    // ✅ FIX: Hard block on submit if pending or approved
+    if (existingSubmission?.status === 'pending') {
+      setError('Your documents are currently under review. Please wait.')
+      return
+    }
+
+    if (existingSubmission?.status === 'approved') {
+      setError('You are already verified. No resubmission needed.')
+      return
+    }
 
     const missingRequiredNow =
-      !files.id_document &&
-      !existingSubmission?.id_document_url
+      !files.id_document && !existingSubmission?.id_document_url
 
     const missingCvNow =
-      !files.cv &&
-      !existingSubmission?.cv_url
+      !files.cv && !existingSubmission?.cv_url
 
     const missingProofNow =
-      !files.proof_of_work &&
-      !existingSubmission?.proof_of_work_url
+      !files.proof_of_work && !existingSubmission?.proof_of_work_url
 
     if (missingRequiredNow) {
       return setError('Please upload your National ID or Passport.')
@@ -221,17 +237,41 @@ export default function SubmitVerification() {
     }
 
     if (existingMap[key]) {
-      return <span className="text-brand-teal text-xs font-medium">Already uploaded</span>
+      return (
+        <span className="text-brand-teal text-xs font-medium">
+          Already uploaded
+        </span>
+      )
     }
 
     return null
   }
 
+  // ✅ FIX: Determine if form should be locked
+  const isLocked =
+    existingSubmission?.status === 'pending' ||
+    existingSubmission?.status === 'approved'
+
+  // ✅ FIX: Dynamic button label
+  function getButtonLabel() {
+    if (loading) return 'Uploading...'
+    if (existingSubmission?.status === 'approved') return 'Already Verified ✓'
+    if (existingSubmission?.status === 'pending') return 'Under Review — Cannot Resubmit'
+    if (existingSubmission?.status === 'rejected') return 'Resubmit Documents →'
+    return 'Submit for Verification →'
+  }
+
   return (
     <div className="min-h-screen bg-brand-light py-10 px-4">
       <div className="max-w-xl mx-auto">
+
+        {/* Header Card */}
         <div className="bg-white rounded-2xl shadow-sm p-6 mb-5 text-center">
-          <img src={logo} alt="CraftConnect" className="h-10 w-auto mx-auto mb-4" />
+          <img
+            src={logo}
+            alt="CraftConnect"
+            className="h-10 w-auto mx-auto mb-4"
+          />
           <h2 className="text-xl font-bold text-brand-navy">
             Verification Documents
           </h2>
@@ -240,49 +280,96 @@ export default function SubmitVerification() {
             This usually takes 24–48 hours.
           </p>
 
+          {/* Progress Indicator */}
           <div className="flex items-center justify-center gap-2 mt-5">
             <div className="flex items-center gap-1.5">
               <div className="w-6 h-6 rounded-full bg-brand-green text-white text-xs flex items-center justify-center font-bold">
                 ✓
               </div>
-              <span className="text-xs text-brand-green font-medium">Profile</span>
+              <span className="text-xs text-brand-green font-medium">
+                Profile
+              </span>
             </div>
-
             <div className="w-8 h-0.5 bg-brand-green"></div>
-
             <div className="flex items-center gap-1.5">
               <div className="w-6 h-6 rounded-full bg-brand-green text-white text-xs flex items-center justify-center font-bold">
                 2
               </div>
-              <span className="text-xs text-brand-green font-medium">Documents</span>
+              <span className="text-xs text-brand-green font-medium">
+                Documents
+              </span>
             </div>
-
             <div className="w-8 h-0.5 bg-brand-border"></div>
-
             <div className="flex items-center gap-1.5">
-              <div className="w-6 h-6 rounded-full bg-brand-border text-brand-slate text-xs flex items-center justify-center font-bold">
-                3
+              <div
+                className={`w-6 h-6 rounded-full text-xs flex items-center justify-center font-bold ${
+                  existingSubmission?.status === 'approved'
+                    ? 'bg-brand-green text-white'
+                    : 'bg-brand-border text-brand-slate'
+                }`}
+              >
+                {existingSubmission?.status === 'approved' ? '✓' : '3'}
               </div>
-              <span className="text-xs text-brand-slate">Verified</span>
+              <span
+                className={`text-xs font-medium ${
+                  existingSubmission?.status === 'approved'
+                    ? 'text-brand-green'
+                    : 'text-brand-slate'
+                }`}
+              >
+                Verified
+              </span>
             </div>
           </div>
         </div>
 
-        {existingSubmission?.status === 'rejected' && (
-          <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg p-3 mb-4 text-sm">
-            Your previous submission was rejected.
-            {existingSubmission.admin_feedback && (
-              <span className="block mt-1">
-                <strong>Admin feedback:</strong> {existingSubmission.admin_feedback}
-              </span>
-            )}
-            Please update your documents and resubmit.
+        {/* ✅ FIX: Status Banners */}
+        {existingSubmission?.status === 'approved' && (
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-5 flex gap-3">
+            <span className="text-xl flex-shrink-0">✅</span>
+            <div>
+              <p className="text-sm font-semibold text-green-700">
+                You are verified!
+              </p>
+              <p className="text-green-600 text-xs mt-1">
+                Your documents have been approved. No further action needed.
+              </p>
+            </div>
           </div>
         )}
 
         {existingSubmission?.status === 'pending' && (
-          <div className="bg-blue-50 border border-blue-200 text-blue-700 rounded-lg p-3 mb-4 text-sm">
-            Your verification is currently under review.
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-5 flex gap-3">
+            <span className="text-xl flex-shrink-0">⏳</span>
+            <div>
+              <p className="text-sm font-semibold text-blue-800">
+                Documents Under Review
+              </p>
+              <p className="text-blue-700 text-xs mt-1">
+                Our admin team is reviewing your submission. You cannot make
+                changes while under review. Usually takes 24–48 hours.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {existingSubmission?.status === 'rejected' && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-5 flex gap-3">
+            <span className="text-xl flex-shrink-0">❌</span>
+            <div>
+              <p className="text-sm font-semibold text-red-700">
+                Submission Rejected
+              </p>
+              {existingSubmission.admin_feedback && (
+                <p className="text-red-600 text-xs mt-1">
+                  <strong>Admin feedback:</strong>{' '}
+                  {existingSubmission.admin_feedback}
+                </p>
+              )}
+              <p className="text-red-500 text-xs mt-1">
+                Please fix the issues above and resubmit your documents.
+              </p>
+            </div>
           </div>
         )}
 
@@ -293,8 +380,15 @@ export default function SubmitVerification() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+
+          {/* Document Upload Cards */}
           {docConfig.map((doc) => (
-            <div key={doc.key} className="bg-white rounded-2xl shadow-sm p-5">
+            <div
+              key={doc.key}
+              className={`bg-white rounded-2xl shadow-sm p-5 ${
+                isLocked ? 'opacity-70' : ''
+              }`}
+            >
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-start gap-3">
                   <span className="text-2xl">{doc.icon}</span>
@@ -315,10 +409,10 @@ export default function SubmitVerification() {
                     </p>
                   </div>
                 </div>
-
                 {renderFileStatus(doc.key)}
               </div>
 
+              {/* Preview */}
               {previews[doc.key] && (
                 <div className="mb-3 rounded-lg overflow-hidden border border-brand-border">
                   {previews[doc.key] === 'pdf' ? (
@@ -341,7 +435,14 @@ export default function SubmitVerification() {
                 </div>
               )}
 
-              <label className="flex flex-col sm:flex-row items-center justify-center gap-2 w-full border-2 border-dashed border-brand-border rounded-xl py-3 cursor-pointer hover:border-brand-green hover:bg-brand-light transition-all text-center">
+              {/* Upload Button — disabled when locked */}
+              <label
+                className={`flex flex-col sm:flex-row items-center justify-center gap-2 w-full border-2 border-dashed rounded-xl py-3 text-center transition-all ${
+                  isLocked
+                    ? 'border-brand-border opacity-50 cursor-not-allowed'
+                    : 'border-brand-border cursor-pointer hover:border-brand-green hover:bg-brand-light'
+                }`}
+              >
                 <span className="text-brand-teal text-sm font-medium">
                   {files[doc.key] ? '🔄 Change file' : '⬆️ Upload file'}
                 </span>
@@ -352,12 +453,14 @@ export default function SubmitVerification() {
                   type="file"
                   accept="image/jpeg,image/png,image/webp,application/pdf"
                   onChange={(e) => handleFileChange(doc.key, e)}
+                  disabled={isLocked}
                   className="hidden"
                 />
               </label>
             </div>
           ))}
 
+          {/* Note to Admin */}
           <div className="bg-white rounded-2xl shadow-sm p-5">
             <label className="block text-sm font-semibold text-brand-navy mb-1">
               📝 Note to Admin
@@ -371,37 +474,43 @@ export default function SubmitVerification() {
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
+              disabled={isLocked}
               placeholder="e.g. I have 8 years of experience as a plumber in Istanbul. My ID is valid until 2028..."
               rows={3}
-              className="w-full border border-brand-border rounded-lg px-4 py-2.5 text-sm text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-green resize-none"
+              className="w-full border border-brand-border rounded-lg px-4 py-2.5 text-sm text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-green resize-none disabled:opacity-50 disabled:cursor-not-allowed"
             />
           </div>
 
+          {/* Security Notice */}
           <div className="bg-brand-light border border-brand-border rounded-xl p-4 flex gap-3">
             <span className="text-xl flex-shrink-0">🔒</span>
             <p className="text-brand-slate text-xs leading-relaxed">
-              Your documents are stored securely and are only visible to our admin
-              team for verification purposes. They will never be shared with clients.
+              Your documents are stored securely and are only visible to our
+              admin team for verification purposes. They will never be shared
+              with clients.
             </p>
           </div>
 
+          {/* Action Buttons */}
           <div className="flex gap-3">
             <button
               type="button"
               onClick={() => navigate('/artisan-dashboard')}
               className="flex-1 border border-brand-border text-brand-slate rounded-xl py-3 font-medium text-sm hover:bg-brand-light transition-all"
             >
-              Skip for now
+              Back to Dashboard
             </button>
 
+            {/* ✅ FIX: Disabled when pending or approved */}
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || isLocked}
               className="flex-1 bg-brand-green text-white rounded-xl py-3 font-semibold hover:bg-brand-navy transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Uploading...' : 'Submit for Verification →'}
+              {getButtonLabel()}
             </button>
           </div>
+
         </form>
       </div>
     </div>
