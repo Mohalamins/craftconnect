@@ -10,6 +10,7 @@ import SubmitVerification from './pages/artisan/SubmitVerification'
 import EditProfile from './pages/artisan/EditProfile'
 import PublicProfile from './pages/artisan/PublicProfile'
 import AdminDashboard from './pages/admin/AdminDashboard'
+import ArtisanReview from './pages/admin/ArtisanReview'
 
 function LoadingScreen() {
   return (
@@ -119,7 +120,14 @@ function App() {
             </ProtectedRoute>
           }
         />
-
+        <Route
+  path="/admin/review/:id"
+  element={
+    <ProtectedRoute allowedRoles={['admin']}>
+      <ArtisanReview />
+    </ProtectedRoute>
+  }
+/>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
