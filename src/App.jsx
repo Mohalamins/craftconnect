@@ -6,6 +6,7 @@ import Login from './pages/auth/Login'
 import ClientDashboard from './pages/client/ClientDashboard'
 import ArtisanDashboard from './pages/artisan/ArtisanDashboard'
 import SetupProfile from './pages/artisan/SetupProfile'
+import SubmitVerification from './pages/artisan/SubmitVerification'
 import EditProfile from './pages/artisan/EditProfile'
 import PublicProfile from './pages/artisan/PublicProfile'
 import AdminDashboard from './pages/admin/AdminDashboard'
@@ -91,6 +92,14 @@ function App() {
               <SetupProfile />
             </ProtectedRoute>
           }
+        />
+        <Route 
+        path="/artisan/submit-verification"
+        element={
+            <ProtectedRoute allowedRoles={['artisan']}>
+            <SubmitVerification />
+          </ProtectedRoute>
+          } 
         />
         <Route
           path="/artisan/edit-profile"

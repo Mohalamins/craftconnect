@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../supabaseClient'
-import logo from '../../assets/logo.png'
+import logo from '../../assets/logo-icon.png'
 
 export default function ArtisanDashboard() {
   const {
@@ -18,22 +18,46 @@ export default function ArtisanDashboard() {
 
   const [toggling, setToggling] = useState(false)
   const [error, setError] = useState('')
+  const [verification, setVerification] = useState(null)
 
   const [successMessage, setSuccessMessage] = useState(location.state?.message)
-  useEffect(() => {
-  if (successMessage) {
-    const timer = setTimeout(() => {
-      setSuccessMessage(null)
-    }, 2000) // 3 seconds
 
-    return () => clearTimeout(timer)
-  }
-}, [successMessage])
-useEffect(() => {
-  if (location.state?.message) {
-    navigate(location.pathname, { replace: true })
-  }
-}, [location.state, location.pathname, navigate])
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => {
+        setSuccessMessage(null)
+      }, 2000)
+
+      return () => clearTimeout(timer)
+    }
+  }, [successMessage])
+
+  useEffect(() => {
+    if (location.state?.message) {
+      navigate(location.pathname, { replace: true })
+    }
+  }, [location.state, location.pathname, navigate])
+
+  useEffect(() => {
+    async function loadVerification() {
+      if (!profile) return
+
+      const { data, error } = await supabase
+        .from('verification_documents')
+        .select('*')
+        .eq('user_id', profile.id)
+        .maybeSingle()
+
+      if (error) {
+        console.error('Error loading verification status:', error)
+        return
+      }
+
+      setVerification(data || null)
+    }
+
+    loadVerification()
+  }, [profile])
 
   if (loading) {
     return (
@@ -114,7 +138,7 @@ useEffect(() => {
   return (
     <div className="min-h-screen bg-brand-light">
       <nav className="bg-white border-b border-brand-border px-6 py-4 flex items-center justify-between">
-        <img src={logo} alt="CraftConnect" className="h-9 w-auto" />
+        <img src={logo} alt="CraftConnect" className="h-12 w-auto" />
         <div className="flex items-center gap-3">
           <Link
             to="/artisan/edit-profile"
@@ -141,6 +165,69 @@ useEffect(() => {
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-600 rounded-lg p-3 text-sm">
             {error}
+          </div>
+        )}
+
+        {/* Verification Status Banner */}
+        {!verification && !artisanProfile.is_verified && (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
+            <span className="text-xl">📝</span>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-blue-800">
+                Verification Required
+              </p>
+              <p className="text-xs text-blue-700 mt-0.5">
+                Submit your documents to get verified and start receiving jobs.
+              </p>
+            </div>
+            <Link
+              to="/artisan/submit-verification"
+              className="text-xs text-brand-teal font-medium hover:underline flex-shrink-0"
+            >
+              Submit →
+            </Link>
+          </div>
+        )}
+
+        {verification?.status === 'pending' && !artisanProfile.is_verified && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 flex items-start gap-3">
+            <span className="text-xl">⏳</span>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-yellow-800">
+                Verification Pending
+              </p>
+              <p className="text-xs text-yellow-700 mt-0.5">
+                Our admin team is reviewing your documents. You&apos;ll be
+                notified once verified.
+              </p>
+            </div>
+            <Link
+              to="/artisan/submit-verification"
+              className="text-xs text-brand-teal font-medium hover:underline flex-shrink-0"
+            >
+              Update docs →
+            </Link>
+          </div>
+        )}
+
+        {verification?.status === 'rejected' && !artisanProfile.is_verified && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+            <span className="text-xl">❌</span>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-red-700">
+                Verification Rejected
+              </p>
+              <p className="text-xs text-red-600 mt-0.5">
+                {verification.admin_feedback ||
+                  'Please update your documents and resubmit.'}
+              </p>
+            </div>
+            <Link
+              to="/artisan/submit-verification"
+              className="text-xs text-brand-teal font-medium hover:underline flex-shrink-0"
+            >
+              Resubmit →
+            </Link>
           </div>
         )}
 

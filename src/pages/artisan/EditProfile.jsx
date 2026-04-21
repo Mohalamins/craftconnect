@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../supabaseClient'
-import logo from '../../assets/logo.png'
+import logo from '../../assets/logo-icon.png'
 
 const TRADES = [
   'Plumber',
@@ -196,7 +196,7 @@ export default function EditProfile() {
     <div className="min-h-screen bg-brand-light py-10 px-4">
       <div className="max-w-xl mx-auto bg-white rounded-2xl shadow-md border border-brand-border p-8">
         <div className="flex justify-center mb-4">
-          <img src={logo} alt="CraftConnect" className="h-10 w-auto" />
+          <img src={logo} alt="CraftConnect" className="h-14 w-auto" />
         </div>
 
         <h2 className="text-center text-xl font-bold text-brand-navy mb-1">

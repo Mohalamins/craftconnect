@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../supabaseClient'
-import logo from '../../assets/logo.png'
+import logo from '../../assets/logo-icon.png'
 
 const TRADES = [
   'Plumber',
@@ -139,7 +139,7 @@ export default function SetupProfile() {
      await refreshProfile()
      await refreshArtisanProfile()
 
-    navigate('/artisan-dashboard')
+    navigate('/artisan/submit-verification')
     } catch (err) {
       setError(err.message || 'Something went wrong.')
     } finally {
@@ -153,7 +153,7 @@ export default function SetupProfile() {
 
         {/* Logo */}
         <div className="mb-4 flex justify-center">
-          <img src={logo} alt="CraftConnect" className="h-10 w-auto" />
+          <img src={logo} alt="CraftConnect" className="h-14 w-auto" />
         </div>
 
         <h2 className="text-center text-xl font-bold text-brand-navy mb-1">

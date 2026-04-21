@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../../supabaseClient'
-import logo from '../../assets/logo.png'
+import logo from '../../assets/logo-icon.png'
 
 export default function PublicProfile() {
-  const { id } = useParams() // this is the artisan's user_id from the URL
+  const { id } = useParams() // artisan user_id from URL
 
   const [artisan, setArtisan] = useState(null)
   const [user, setUser] = useState(null)
@@ -17,7 +17,7 @@ export default function PublicProfile() {
       setLoading(true)
       setNotFound(false)
 
-      // 1. Fetch artisan profile by user_id
+      // Fetch artisan profile by user_id
       const { data: artisanData, error: artisanError } = await supabase
         .from('artisan_profiles')
         .select('*')
@@ -30,7 +30,7 @@ export default function PublicProfile() {
         return
       }
 
-      // 2. Fetch matching user info
+      // Fetch matching user info
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('full_name, phone, city')
@@ -41,7 +41,7 @@ export default function PublicProfile() {
         console.error('Error fetching user info:', userError)
       }
 
-      // 3. Fetch reviews using artisan profile id (NOT user id)
+      // Fetch reviews using artisan profile id
       const { data: reviewData, error: reviewError } = await supabase
         .from('reviews')
         .select('*, users!reviews_client_id_fkey(full_name)')
@@ -71,8 +71,6 @@ export default function PublicProfile() {
       </span>
     ))
   }
-
-  const cleanedPhone = user?.phone?.replace(/\D/g, '')
 
   if (loading) {
     return (
@@ -104,7 +102,7 @@ export default function PublicProfile() {
   return (
     <div className="min-h-screen bg-brand-light">
       <nav className="bg-white border-b border-brand-border px-6 py-4">
-        <img src={logo} alt="CraftConnect" className="h-9 w-auto" />
+        <img src={logo} alt="CraftConnect" className="h-16 w-auto" />
       </nav>
 
       <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
@@ -128,15 +126,15 @@ export default function PublicProfile() {
                   {user?.full_name || 'Unnamed Artisan'}
                 </h1>
 
-                {artisan.is_verified ? (
-  <span className="bg-brand-teal text-white text-xs font-semibold px-2.5 py-1 rounded-full">
-    ✓ Verified
-  </span>
-) : (
-  <span className="bg-yellow-100 text-yellow-700 text-xs font-semibold px-2.5 py-1 rounded-full">
-    ⏳  Verification Pending
-  </span>
-)}
+                {artisan?.is_verified ? (
+                  <span className="bg-brand-teal text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+                    Verified ✓
+                  </span>
+                ) : (
+                  <span className="bg-yellow-100 text-yellow-700 text-xs font-semibold px-2.5 py-1 rounded-full">
+                    Not Verified ⚠️
+                  </span>
+                )}
               </div>
 
               <p className="text-brand-teal font-medium mt-1">
@@ -178,7 +176,28 @@ export default function PublicProfile() {
               {artisan.bio}
             </p>
           )}
+          <div className="grid grid-cols-3 gap-3 mt-5 pt-4 border-t border-brand-border">
+  <div className="bg-brand-light rounded-xl p-4 text-center">
+    <p className="text-2xl font-bold text-brand-navy">0</p>
+    <p className="text-xs text-brand-slate mt-1">Jobs Completed</p>
+  </div>
 
+  <div className="bg-brand-light rounded-xl p-4 text-center">
+    <p className="text-2xl font-bold text-brand-green">
+      {artisan?.total_reviews > 0
+        ? Number(artisan.average_rating).toFixed(1)
+        : '—'}
+    </p>
+    <p className="text-xs text-brand-slate mt-1">Avg Rating</p>
+  </div>
+
+  <div className="bg-brand-light rounded-xl p-4 text-center">
+    <p className="text-2xl font-bold text-brand-teal">
+      {artisan?.total_reviews || 0}
+    </p>
+    <p className="text-xs text-brand-slate mt-1">Reviews</p>
+  </div>
+</div>
           <div className="flex gap-3 mt-5 pt-4 border-t border-brand-border">
             {user?.phone ? (
               <a
@@ -196,23 +215,12 @@ export default function PublicProfile() {
               </button>
             )}
 
-            {cleanedPhone ? (
-              <a
-                href={`https://wa.me/${cleanedPhone}`}
-                target="_blank"
-                rel="noreferrer"
-                className="flex-1 bg-brand-teal text-white text-center rounded-xl py-3 font-semibold text-sm hover:bg-brand-navy transition-all"
-              >
-                💬 WhatsApp
-              </a>
-            ) : (
-              <button
-                disabled
-                className="flex-1 bg-gray-200 text-gray-500 text-center rounded-xl py-3 font-semibold text-sm cursor-not-allowed"
-              >
-                💬 No WhatsApp
-              </button>
-            )}
+            <Link
+              to={`/messages/${id}`}
+              className="flex-1 bg-brand-teal text-white text-center rounded-xl py-3 font-semibold text-sm hover:bg-brand-navy transition-all"
+            >
+              💬 Message
+            </Link>
           </div>
         </div>
 

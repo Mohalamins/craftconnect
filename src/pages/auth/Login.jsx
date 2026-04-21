@@ -52,10 +52,10 @@ export default function Login() {
     <div className="min-h-screen bg-brand-light flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-md rounded-2xl border border-brand-border bg-white p-8 shadow-md">
         <div className="mb-6 flex justify-center">
-          <img src={logo} alt="CraftConnect" className="h-12 w-auto" />
+          <img src={logo} alt="CraftConnect" className="h-24 w-auto" />
         </div>
 
-        <h2 className="mb-1 text-center text-xl font-semibold text-brand-navy">
+        <h2 className="mb-1 text-center t 1ext-xl font-semibold text-brand-navy">
           Welcome back
         </h2>
         <p className="mb-6 text-center text-sm text-brand-slate">
