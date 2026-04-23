@@ -9,6 +9,7 @@ export default function Login() {
   const location = useLocation()
 
   const successMessage = location.state?.message
+  const from = location.state?.from || '/'
 
   const [formData, setFormData] = useState({
     email: '',
@@ -27,11 +28,13 @@ export default function Login() {
     setError('')
 
     if (!formData.email.trim()) {
-      return setError('Please enter your email.')
+      setError('Please enter your email.')
+      return
     }
 
     if (!formData.password) {
-      return setError('Please enter your password.')
+      setError('Please enter your password.')
+      return
     }
 
     setLoading(true)
@@ -45,7 +48,7 @@ export default function Login() {
     }
 
     setLoading(false)
-    navigate('/')
+    navigate(from, { replace: true })
   }
 
   return (
@@ -55,7 +58,7 @@ export default function Login() {
           <img src={logo} alt="CraftConnect" className="h-24 w-auto" />
         </div>
 
-        <h2 className="mb-1 text-center t 1ext-xl font-semibold text-brand-navy">
+        <h2 className="mb-1 text-center text-xl font-semibold text-brand-navy">
           Welcome back
         </h2>
         <p className="mb-6 text-center text-sm text-brand-slate">
@@ -114,7 +117,10 @@ export default function Login() {
 
         <p className="mt-6 text-center text-sm text-brand-slate">
           Don&apos;t have an account?{' '}
-          <Link to="/register" className="font-semibold text-brand-teal hover:underline">
+          <Link
+            to="/register"
+            className="font-semibold text-brand-teal hover:underline"
+          >
             Register here
           </Link>
         </p>

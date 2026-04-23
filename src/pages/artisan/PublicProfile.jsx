@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../supabaseClient'
 import logo from '../../assets/logo-icon.png'
 
 export default function PublicProfile() {
   const { id } = useParams() // artisan user_id from URL
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { user: currentUser } = useAuth()
 
   const [artisan, setArtisan] = useState(null)
   const [user, setUser] = useState(null)
@@ -70,6 +74,32 @@ export default function PublicProfile() {
         ★
       </span>
     ))
+  }
+
+  function requireLogin(action) {
+    if (!currentUser) {
+      alert(`Please log in to ${action} this artisan.`)
+      navigate('/login', {
+        state: { from: location.pathname }
+      })
+      return false
+    }
+    return true
+  }
+
+  function handleCallClick() {
+    const allowed = requireLogin('call')
+    if (!allowed) return
+
+    if (!user?.phone) return
+    window.location.href = `tel:${user.phone}`
+  }
+
+  function handleMessageClick() {
+    const allowed = requireLogin('message')
+    if (!allowed) return
+
+    navigate(`/messages/${id}`)
   }
 
   if (loading) {
@@ -176,36 +206,38 @@ export default function PublicProfile() {
               {artisan.bio}
             </p>
           )}
+
           <div className="grid grid-cols-3 gap-3 mt-5 pt-4 border-t border-brand-border">
-  <div className="bg-brand-light rounded-xl p-4 text-center">
-    <p className="text-2xl font-bold text-brand-navy">0</p>
-    <p className="text-xs text-brand-slate mt-1">Jobs Completed</p>
-  </div>
+            <div className="bg-brand-light rounded-xl p-4 text-center">
+              <p className="text-2xl font-bold text-brand-navy">0</p>
+              <p className="text-xs text-brand-slate mt-1">Jobs Completed</p>
+            </div>
 
-  <div className="bg-brand-light rounded-xl p-4 text-center">
-    <p className="text-2xl font-bold text-brand-green">
-      {artisan?.total_reviews > 0
-        ? Number(artisan.average_rating).toFixed(1)
-        : '—'}
-    </p>
-    <p className="text-xs text-brand-slate mt-1">Avg Rating</p>
-  </div>
+            <div className="bg-brand-light rounded-xl p-4 text-center">
+              <p className="text-2xl font-bold text-brand-green">
+                {artisan?.total_reviews > 0
+                  ? Number(artisan.average_rating).toFixed(1)
+                  : '—'}
+              </p>
+              <p className="text-xs text-brand-slate mt-1">Avg Rating</p>
+            </div>
 
-  <div className="bg-brand-light rounded-xl p-4 text-center">
-    <p className="text-2xl font-bold text-brand-teal">
-      {artisan?.total_reviews || 0}
-    </p>
-    <p className="text-xs text-brand-slate mt-1">Reviews</p>
-  </div>
-</div>
+            <div className="bg-brand-light rounded-xl p-4 text-center">
+              <p className="text-2xl font-bold text-brand-teal">
+                {artisan?.total_reviews || 0}
+              </p>
+              <p className="text-xs text-brand-slate mt-1">Reviews</p>
+            </div>
+          </div>
+
           <div className="flex gap-3 mt-5 pt-4 border-t border-brand-border">
             {user?.phone ? (
-              <a
-                href={`tel:${user.phone}`}
+              <button
+                onClick={handleCallClick}
                 className="flex-1 bg-brand-green text-white text-center rounded-xl py-3 font-semibold text-sm hover:bg-brand-navy transition-all"
               >
                 📞 Call
-              </a>
+              </button>
             ) : (
               <button
                 disabled
@@ -215,12 +247,12 @@ export default function PublicProfile() {
               </button>
             )}
 
-            <Link
-              to={`/messages/${id}`}
+            <button
+              onClick={handleMessageClick}
               className="flex-1 bg-brand-teal text-white text-center rounded-xl py-3 font-semibold text-sm hover:bg-brand-navy transition-all"
             >
               💬 Message
-            </Link>
+            </button>
           </div>
         </div>
 

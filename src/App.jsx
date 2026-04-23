@@ -4,6 +4,8 @@ import { useAuth } from './context/AuthContext'
 import Register from './pages/auth/Register'
 import Login from './pages/auth/Login'
 import ClientDashboard from './pages/client/ClientDashboard'
+import Home from './pages/Home'
+import SearchResults from './pages/SearchResults'
 import ArtisanDashboard from './pages/artisan/ArtisanDashboard'
 import SetupProfile from './pages/artisan/SetupProfile'
 import SubmitVerification from './pages/artisan/SubmitVerification'
@@ -21,21 +23,6 @@ function LoadingScreen() {
       </div>
     </div>
   )
-}
-
-function HomeRedirect() {
-  const { user, profile, loading } = useAuth()
-
-  if (loading) return <LoadingScreen />
-
-  if (!user) return <Navigate to="/login" replace />
-  if (!profile) return <Navigate to="/login" replace />
-
-  if (profile.role === 'client') return <Navigate to="/client-dashboard" replace />
-  if (profile.role === 'artisan') return <Navigate to="/artisan-dashboard" replace />
-  if (profile.role === 'admin') return <Navigate to="/admin-dashboard" replace />
-
-  return <Navigate to="/login" replace />
 }
 
 function ProtectedRoute({ children, allowedRoles }) {
@@ -60,9 +47,9 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<HomeRedirect />} />
-
         {/* Public */}
+        <Route path="/" element={<Home />} />
+        <Route path="/search" element={<SearchResults />} />
         <Route path="/register" element={<Register />} />
         <Route path="/login" element={<Login />} />
         <Route path="/artisan/:id" element={<PublicProfile />} />
@@ -94,13 +81,13 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route 
-        path="/artisan/submit-verification"
-        element={
+        <Route
+          path="/artisan/submit-verification"
+          element={
             <ProtectedRoute allowedRoles={['artisan']}>
-            <SubmitVerification />
-          </ProtectedRoute>
-          } 
+              <SubmitVerification />
+            </ProtectedRoute>
+          }
         />
         <Route
           path="/artisan/edit-profile"
@@ -121,13 +108,14 @@ function App() {
           }
         />
         <Route
-  path="/admin/review/:id"
-  element={
-    <ProtectedRoute allowedRoles={['admin']}>
-      <ArtisanReview />
-    </ProtectedRoute>
-  }
-/>
+          path="/admin/review/:id"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <ArtisanReview />
+            </ProtectedRoute>
+          }
+        />
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

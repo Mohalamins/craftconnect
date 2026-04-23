@@ -82,7 +82,6 @@ export default function SubmitVerification() {
   }, [previews])
 
   function handleFileChange(key, e) {
-    // ✅ FIX: Block file changes while pending or approved
     if (
       existingSubmission?.status === 'pending' ||
       existingSubmission?.status === 'approved'
@@ -149,7 +148,6 @@ export default function SubmitVerification() {
       return
     }
 
-    // ✅ FIX: Hard block on submit if pending or approved
     if (existingSubmission?.status === 'pending') {
       setError('Your documents are currently under review. Please wait.')
       return
@@ -160,25 +158,24 @@ export default function SubmitVerification() {
       return
     }
 
-    const missingRequiredNow =
-      !files.id_document && !existingSubmission?.id_document_url
-
-    const missingCvNow =
-      !files.cv && !existingSubmission?.cv_url
-
-    const missingProofNow =
+    const missingId = !files.id_document && !existingSubmission?.id_document_url
+    const missingCv = !files.cv && !existingSubmission?.cv_url
+    const missingProof =
       !files.proof_of_work && !existingSubmission?.proof_of_work_url
 
-    if (missingRequiredNow) {
-      return setError('Please upload your National ID or Passport.')
+    if (missingId) {
+      setError('Please upload your National ID or Passport.')
+      return
     }
 
-    if (missingCvNow) {
-      return setError('Please upload your CV.')
+    if (missingCv) {
+      setError('Please upload your CV.')
+      return
     }
 
-    if (missingProofNow) {
-      return setError('Please upload proof of work experience.')
+    if (missingProof) {
+      setError('Please upload proof of work experience.')
+      return
     }
 
     setLoading(true)
@@ -216,7 +213,9 @@ export default function SubmitVerification() {
 
       if (dbError) throw dbError
 
-      navigate('/artisan-dashboard')
+      navigate('/artisan-dashboard', {
+        state: { message: 'Documents submitted successfully for review.' },
+      })
     } catch (err) {
       setError(err.message || 'Upload failed. Please try again.')
     } finally {
@@ -247,25 +246,54 @@ export default function SubmitVerification() {
     return null
   }
 
-  // ✅ FIX: Determine if form should be locked
+  function renderExistingFilePreview(key) {
+    if (files[key]) return null
+
+    const existingMap = {
+      id_document: existingSubmission?.id_document_url,
+      cv: existingSubmission?.cv_url,
+      proof_of_work: existingSubmission?.proof_of_work_url,
+      extra_doc: existingSubmission?.extra_doc_url,
+    }
+
+    const filePath = existingMap[key]
+    if (!filePath) return null
+
+    const fileName = filePath.split('/').pop()
+    const isPdf = fileName?.toLowerCase().endsWith('.pdf')
+
+    return (
+      <div className="mb-3 rounded-lg overflow-hidden border border-brand-border">
+        <div className="bg-brand-light p-3 flex items-center gap-2">
+          <span className="text-2xl">{isPdf ? '📄' : '📎'}</span>
+          <div>
+            <p className="text-sm font-medium text-brand-navy">{fileName}</p>
+            <p className="text-xs text-brand-slate">Already uploaded</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   const isLocked =
     existingSubmission?.status === 'pending' ||
     existingSubmission?.status === 'approved'
 
-  // ✅ FIX: Dynamic button label
   function getButtonLabel() {
     if (loading) return 'Uploading...'
     if (existingSubmission?.status === 'approved') return 'Already Verified ✓'
-    if (existingSubmission?.status === 'pending') return 'Under Review — Cannot Resubmit'
-    if (existingSubmission?.status === 'rejected') return 'Resubmit Documents →'
+    if (existingSubmission?.status === 'pending') {
+      return 'Under Review — Cannot Resubmit'
+    }
+    if (existingSubmission?.status === 'rejected') {
+      return 'Resubmit Documents →'
+    }
     return 'Submit for Verification →'
   }
 
   return (
     <div className="min-h-screen bg-brand-light py-10 px-4">
       <div className="max-w-xl mx-auto">
-
-        {/* Header Card */}
         <div className="bg-white rounded-2xl shadow-sm p-6 mb-5 text-center">
           <img
             src={logo}
@@ -280,7 +308,6 @@ export default function SubmitVerification() {
             This usually takes 24–48 hours.
           </p>
 
-          {/* Progress Indicator */}
           <div className="flex items-center justify-center gap-2 mt-5">
             <div className="flex items-center gap-1.5">
               <div className="w-6 h-6 rounded-full bg-brand-green text-white text-xs flex items-center justify-center font-bold">
@@ -290,7 +317,9 @@ export default function SubmitVerification() {
                 Profile
               </span>
             </div>
+
             <div className="w-8 h-0.5 bg-brand-green"></div>
+
             <div className="flex items-center gap-1.5">
               <div className="w-6 h-6 rounded-full bg-brand-green text-white text-xs flex items-center justify-center font-bold">
                 2
@@ -299,7 +328,9 @@ export default function SubmitVerification() {
                 Documents
               </span>
             </div>
+
             <div className="w-8 h-0.5 bg-brand-border"></div>
+
             <div className="flex items-center gap-1.5">
               <div
                 className={`w-6 h-6 rounded-full text-xs flex items-center justify-center font-bold ${
@@ -323,7 +354,6 @@ export default function SubmitVerification() {
           </div>
         </div>
 
-        {/* ✅ FIX: Status Banners */}
         {existingSubmission?.status === 'approved' && (
           <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-5 flex gap-3">
             <span className="text-xl flex-shrink-0">✅</span>
@@ -343,11 +373,11 @@ export default function SubmitVerification() {
             <span className="text-xl flex-shrink-0">⏳</span>
             <div>
               <p className="text-sm font-semibold text-blue-800">
-                Documents Under Review
+                Your verification is currently under review.
               </p>
               <p className="text-blue-700 text-xs mt-1">
                 Our admin team is reviewing your submission. You cannot make
-                changes while under review. Usually takes 24–48 hours.
+                changes while under review.
               </p>
             </div>
           </div>
@@ -380,8 +410,6 @@ export default function SubmitVerification() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-
-          {/* Document Upload Cards */}
           {docConfig.map((doc) => (
             <div
               key={doc.key}
@@ -409,10 +437,10 @@ export default function SubmitVerification() {
                     </p>
                   </div>
                 </div>
+
                 {renderFileStatus(doc.key)}
               </div>
 
-              {/* Preview */}
               {previews[doc.key] && (
                 <div className="mb-3 rounded-lg overflow-hidden border border-brand-border">
                   {previews[doc.key] === 'pdf' ? (
@@ -422,7 +450,7 @@ export default function SubmitVerification() {
                         <p className="text-sm font-medium text-brand-navy">
                           {files[doc.key]?.name}
                         </p>
-                        <p className="text-xs text-brand-slate">PDF uploaded</p>
+                        <p className="text-xs text-brand-slate">PDF selected</p>
                       </div>
                     </div>
                   ) : (
@@ -435,7 +463,8 @@ export default function SubmitVerification() {
                 </div>
               )}
 
-              {/* Upload Button — disabled when locked */}
+              {renderExistingFilePreview(doc.key)}
+
               <label
                 className={`flex flex-col sm:flex-row items-center justify-center gap-2 w-full border-2 border-dashed rounded-xl py-3 text-center transition-all ${
                   isLocked
@@ -460,7 +489,6 @@ export default function SubmitVerification() {
             </div>
           ))}
 
-          {/* Note to Admin */}
           <div className="bg-white rounded-2xl shadow-sm p-5">
             <label className="block text-sm font-semibold text-brand-navy mb-1">
               📝 Note to Admin
@@ -481,7 +509,6 @@ export default function SubmitVerification() {
             />
           </div>
 
-          {/* Security Notice */}
           <div className="bg-brand-light border border-brand-border rounded-xl p-4 flex gap-3">
             <span className="text-xl flex-shrink-0">🔒</span>
             <p className="text-brand-slate text-xs leading-relaxed">
@@ -491,7 +518,6 @@ export default function SubmitVerification() {
             </p>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex gap-3">
             <button
               type="button"
@@ -501,7 +527,6 @@ export default function SubmitVerification() {
               Back to Dashboard
             </button>
 
-            {/* ✅ FIX: Disabled when pending or approved */}
             <button
               type="submit"
               disabled={loading || isLocked}
@@ -510,7 +535,6 @@ export default function SubmitVerification() {
               {getButtonLabel()}
             </button>
           </div>
-
         </form>
       </div>
     </div>
