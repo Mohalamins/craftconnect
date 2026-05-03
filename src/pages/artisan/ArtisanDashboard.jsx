@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import JobCard from '../../components/JobCard'
 import { supabase } from '../../supabaseClient'
 import logo from '../../assets/logo-icon.png'
 
@@ -19,15 +20,11 @@ export default function ArtisanDashboard() {
   const [toggling, setToggling] = useState(false)
   const [error, setError] = useState('')
   const [verification, setVerification] = useState(null)
-
   const [successMessage, setSuccessMessage] = useState(location.state?.message)
 
   useEffect(() => {
     if (successMessage) {
-      const timer = setTimeout(() => {
-        setSuccessMessage(null)
-      }, 2000)
-
+      const timer = setTimeout(() => setSuccessMessage(null), 2000)
       return () => clearTimeout(timer)
     }
   }, [successMessage])
@@ -58,6 +55,31 @@ export default function ArtisanDashboard() {
 
     loadVerification()
   }, [profile])
+
+  async function toggleAvailability() {
+    try {
+      setError('')
+      setToggling(true)
+
+      const { error } = await supabase
+        .from('artisan_profiles')
+        .update({ is_available: !artisanProfile.is_available })
+        .eq('user_id', profile.id)
+
+      if (error) throw error
+
+      await refreshArtisanProfile()
+    } catch (err) {
+      setError(err.message || 'Failed to update availability.')
+    } finally {
+      setToggling(false)
+    }
+  }
+
+  async function handleLogout() {
+    await signOut()
+    navigate('/login')
+  }
 
   if (loading) {
     return (
@@ -110,31 +132,6 @@ export default function ArtisanDashboard() {
     )
   }
 
-  async function toggleAvailability() {
-    try {
-      setError('')
-      setToggling(true)
-
-      const { error } = await supabase
-        .from('artisan_profiles')
-        .update({ is_available: !artisanProfile.is_available })
-        .eq('user_id', profile.id)
-
-      if (error) throw error
-
-      await refreshArtisanProfile()
-    } catch (err) {
-      setError(err.message || 'Failed to update availability.')
-    } finally {
-      setToggling(false)
-    }
-  }
-
-  async function handleLogout() {
-    await signOut()
-    navigate('/login')
-  }
-
   return (
     <div className="min-h-screen bg-brand-light">
       <nav className="bg-white border-b border-brand-border px-6 py-4 flex items-center justify-between">
@@ -168,7 +165,6 @@ export default function ArtisanDashboard() {
           </div>
         )}
 
-        {/* Verification Status Banner */}
         {!verification && !artisanProfile.is_verified && (
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
             <span className="text-xl">📝</span>
@@ -197,8 +193,7 @@ export default function ArtisanDashboard() {
                 Verification Pending
               </p>
               <p className="text-xs text-yellow-700 mt-0.5">
-                Our admin team is reviewing your documents. You&apos;ll be
-                notified once verified.
+                Our admin team is reviewing your documents. You&apos;ll be notified once verified.
               </p>
             </div>
             <Link
@@ -218,8 +213,7 @@ export default function ArtisanDashboard() {
                 Verification Rejected
               </p>
               <p className="text-xs text-red-600 mt-0.5">
-                {verification.admin_feedback ||
-                  'Please update your documents and resubmit.'}
+                {verification.admin_feedback || 'Please update your documents and resubmit.'}
               </p>
             </div>
             <Link
@@ -341,15 +335,183 @@ export default function ArtisanDashboard() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm p-6">
-          <h3 className="font-semibold text-brand-navy mb-4">Job Requests</h3>
+        <JobRequestsSection artisanId={artisanProfile.id} />
+      </div>
+    </div>
+  )
+}
+
+function JobRequestsSection({ artisanId }) {
+  const [jobs, setJobs] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('Pending')
+  const [declineReason, setDeclineReason] = useState('')
+  const [decliningJobId, setDecliningJobId] = useState(null)
+
+  const TABS = ['Pending', 'Active', 'Completed', 'All']
+
+  useEffect(() => {
+    if (artisanId) fetchJobs()
+  }, [artisanId])
+
+  async function fetchJobs() {
+    setLoading(true)
+
+    const { data, error } = await supabase
+      .from('jobs')
+      .select(`
+        *,
+        client:users!jobs_client_id_fkey (
+          full_name,
+          phone
+        )
+      `)
+      .eq('artisan_id', artisanId)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Error loading jobs:', error)
+    } else {
+      setJobs(data || [])
+    }
+
+    setLoading(false)
+  }
+
+  async function handleAction(jobId, newStatus) {
+    if (newStatus === 'declined') {
+      setDecliningJobId(jobId)
+      return
+    }
+
+    const { error } = await supabase
+      .from('jobs')
+      .update({ status: newStatus })
+      .eq('id', jobId)
+      .eq('artisan_id', artisanId)
+
+    if (!error) fetchJobs()
+  }
+
+  async function submitDecline() {
+    if (!declineReason.trim()) return
+
+    const { error } = await supabase
+      .from('jobs')
+      .update({
+        status: 'declined',
+        decline_reason: declineReason.trim(),
+      })
+      .eq('id', decliningJobId)
+      .eq('artisan_id', artisanId)
+
+    if (!error) {
+      setDecliningJobId(null)
+      setDeclineReason('')
+      fetchJobs()
+    }
+  }
+
+  function getFiltered() {
+    if (activeTab === 'Pending') return jobs.filter((j) => j.status === 'pending')
+    if (activeTab === 'Active') return jobs.filter((j) => j.status === 'accepted')
+    if (activeTab === 'Completed') {
+      return jobs.filter((j) =>
+        ['completed', 'declined', 'cancelled'].includes(j.status)
+      )
+    }
+    return jobs
+  }
+
+  const pendingCount = jobs.filter((j) => j.status === 'pending').length
+  const filtered = getFiltered()
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+      {decliningJobId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+            <h3 className="font-bold text-brand-navy mb-2">Decline Job</h3>
+            <p className="text-brand-slate text-sm mb-4">
+              Please provide a reason so the client understands.
+            </p>
+
+            <textarea
+              value={declineReason}
+              onChange={(e) => setDeclineReason(e.target.value)}
+              placeholder="e.g. I'm not available on the preferred date..."
+              rows={3}
+              className="w-full border border-brand-border rounded-lg px-4 py-2.5 text-sm text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-green resize-none mb-4"
+            />
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setDecliningJobId(null)
+                  setDeclineReason('')
+                }}
+                className="flex-1 border border-brand-border text-brand-slate rounded-xl py-2.5 text-sm font-medium hover:bg-brand-light"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={submitDecline}
+                disabled={!declineReason.trim()}
+                className="flex-1 bg-red-500 text-white rounded-xl py-2.5 text-sm font-semibold hover:bg-red-600 disabled:opacity-40"
+              >
+                Decline Job
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex border-b border-brand-border">
+        {TABS.map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`flex-1 py-3.5 text-xs font-medium transition-all ${
+              activeTab === tab
+                ? 'border-b-2 border-brand-green text-brand-green'
+                : 'text-brand-slate hover:text-brand-navy'
+            }`}
+          >
+            {tab}
+            {tab === 'Pending' && pendingCount > 0 && (
+              <span className="ml-1 bg-yellow-400 text-white text-xs px-1.5 py-0.5 rounded-full">
+                {pendingCount}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      <div className="p-4">
+        {loading ? (
+          <div className="flex justify-center py-10">
+            <div className="w-8 h-8 border-4 border-brand-green border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="text-center py-10">
             <span className="text-4xl">📋</span>
             <p className="text-brand-slate text-sm mt-3">
-              No job requests yet. Coming in Phase 6.
+              No {activeTab.toLowerCase()} job requests.
             </p>
           </div>
-        </div>
+        ) : (
+          <div className="space-y-3">
+            {filtered.map((job) => (
+              <JobCard
+                key={job.id}
+                job={job}
+                viewAs="artisan"
+                onAction={handleAction}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

@@ -5,10 +5,10 @@ import { supabase } from '../../supabaseClient'
 import logo from '../../assets/logo-icon.png'
 
 export default function PublicProfile() {
-  const { id } = useParams() // artisan user_id from URL
+  const { id } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
-  const { user: currentUser } = useAuth()
+  const { user: currentUser, profile } = useAuth()
 
   const [artisan, setArtisan] = useState(null)
   const [user, setUser] = useState(null)
@@ -21,7 +21,6 @@ export default function PublicProfile() {
       setLoading(true)
       setNotFound(false)
 
-      // Fetch artisan profile by user_id
       const { data: artisanData, error: artisanError } = await supabase
         .from('artisan_profiles')
         .select('*')
@@ -34,27 +33,17 @@ export default function PublicProfile() {
         return
       }
 
-      // Fetch matching user info
-      const { data: userData, error: userError } = await supabase
+      const { data: userData } = await supabase
         .from('users')
         .select('full_name, phone, city')
         .eq('id', id)
         .single()
 
-      if (userError) {
-        console.error('Error fetching user info:', userError)
-      }
-
-      // Fetch reviews using artisan profile id
-      const { data: reviewData, error: reviewError } = await supabase
+      const { data: reviewData } = await supabase
         .from('reviews')
         .select('*, users!reviews_client_id_fkey(full_name)')
         .eq('artisan_id', artisanData.id)
         .order('created_at', { ascending: false })
-
-      if (reviewError) {
-        console.error('Error fetching reviews:', reviewError)
-      }
 
       setArtisan(artisanData)
       setUser(userData)
@@ -67,10 +56,7 @@ export default function PublicProfile() {
 
   function renderStars(count) {
     return Array.from({ length: 5 }, (_, i) => (
-      <span
-        key={i}
-        className={i < count ? 'text-yellow-400' : 'text-gray-300'}
-      >
+      <span key={i} className={i < count ? 'text-yellow-400' : 'text-gray-300'}>
         ★
       </span>
     ))
@@ -79,27 +65,26 @@ export default function PublicProfile() {
   function requireLogin(action) {
     if (!currentUser) {
       alert(`Please log in to ${action} this artisan.`)
-      navigate('/login', {
-        state: { from: location.pathname }
-      })
+      navigate('/login', { state: { from: location.pathname } })
       return false
     }
     return true
   }
 
   function handleCallClick() {
-    const allowed = requireLogin('call')
-    if (!allowed) return
-
-    if (!user?.phone) return
-    window.location.href = `tel:${user.phone}`
+    if (!requireLogin('call')) return
+    if (user?.phone) window.location.href = `tel:${user.phone}`
   }
 
-  function handleMessageClick() {
-    const allowed = requireLogin('message')
-    if (!allowed) return
+  function handleJobRequest() {
+    if (!requireLogin('send a job request to')) return
 
-    navigate(`/messages/${id}`)
+    if (profile?.role !== 'client') {
+      alert('Only clients can send job requests.')
+      return
+    }
+
+    navigate(`/job-request/${artisan.id}`)
   }
 
   if (loading) {
@@ -118,10 +103,7 @@ export default function PublicProfile() {
           <h2 className="text-xl font-bold text-brand-navy mt-4">
             Artisan Not Found
           </h2>
-          <Link
-            to="/"
-            className="text-brand-teal text-sm mt-2 hover:underline block"
-          >
+          <Link to="/" className="text-brand-teal text-sm mt-2 hover:underline block">
             Go back home
           </Link>
         </div>
@@ -167,9 +149,7 @@ export default function PublicProfile() {
                 )}
               </div>
 
-              <p className="text-brand-teal font-medium mt-1">
-                {artisan?.trade}
-              </p>
+              <p className="text-brand-teal font-medium mt-1">{artisan?.trade}</p>
 
               <p className="text-brand-slate text-sm mt-0.5">
                 📍 {artisan?.city || user?.city || 'City not added'}
@@ -241,19 +221,37 @@ export default function PublicProfile() {
             ) : (
               <button
                 disabled
-                className="flex-1 bg-gray-200 text-gray-500 text-center rounded-xl py-3 font-semibold text-sm cursor-not-allowed"
+                className="flex-1 bg-gray-200 text-gray-500 rounded-xl py-3 font-semibold text-sm cursor-not-allowed"
               >
                 📞 No Phone
               </button>
             )}
 
             <button
-              onClick={handleMessageClick}
+              onClick={() => alert('Messaging coming soon!')}
               className="flex-1 bg-brand-teal text-white text-center rounded-xl py-3 font-semibold text-sm hover:bg-brand-navy transition-all"
             >
               💬 Message
             </button>
           </div>
+
+          {profile?.role === 'client' && (
+            <button
+              onClick={handleJobRequest}
+              className="w-full mt-3 bg-brand-navy text-white rounded-xl py-3 font-semibold text-sm hover:bg-brand-teal transition-all"
+            >
+              📋 Send Job Request
+            </button>
+          )}
+
+          {!currentUser && (
+            <p className="text-center text-xs text-brand-slate mt-3">
+              <Link to="/login" className="text-brand-teal font-medium hover:underline">
+                Sign in
+              </Link>{' '}
+              to send a job request
+            </p>
+          )}
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm p-6">
