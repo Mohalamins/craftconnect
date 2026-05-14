@@ -228,11 +228,17 @@ export default function PublicProfile() {
             )}
 
             <button
-              onClick={() => alert('Messaging coming soon!')}
-              className="flex-1 bg-brand-teal text-white text-center rounded-xl py-3 font-semibold text-sm hover:bg-brand-navy transition-all"
-            >
-              💬 Message
-            </button>
+  onClick={() => {
+    if (!user) {
+      navigate('/login')
+      return
+    }
+    navigate(`/messages/${id}`)
+  }}
+  className="flex-1 bg-brand-teal text-white text-center rounded-xl py-3 font-semibold text-sm hover:bg-brand-navy transition-all"
+>
+  💬 Message
+</button>
           </div>
 
           {profile?.role === 'client' && (

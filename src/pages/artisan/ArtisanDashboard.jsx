@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import JobCard from '../../components/JobCard'
+import { useUnreadCount } from '../../utils/useUnreadCount'
 import { supabase } from '../../supabaseClient'
 import logo from '../../assets/logo-icon.png'
 
@@ -21,6 +22,8 @@ export default function ArtisanDashboard() {
   const [error, setError] = useState('')
   const [verification, setVerification] = useState(null)
   const [successMessage, setSuccessMessage] = useState(location.state?.message)
+
+  const unreadCount = useUnreadCount(profile?.id)
 
   useEffect(() => {
     if (successMessage) {
@@ -135,22 +138,44 @@ export default function ArtisanDashboard() {
   return (
     <div className="min-h-screen bg-brand-light">
       <nav className="bg-white border-b border-brand-border px-6 py-4 flex items-center justify-between">
-        <img src={logo} alt="CraftConnect" className="h-12 w-auto" />
-        <div className="flex items-center gap-3">
-          <Link
-            to="/artisan/edit-profile"
-            className="text-sm text-brand-teal font-medium hover:underline"
-          >
-            Edit Profile
-          </Link>
-          <button
-            onClick={handleLogout}
-            className="text-sm bg-red-50 text-red-500 border border-red-200 px-4 py-1.5 rounded-lg hover:bg-red-100 transition-all"
-          >
-            Logout
-          </button>
-        </div>
-      </nav>
+  <img
+    src={logo}
+    alt="CraftConnect"
+    className="h-14 w-auto"
+  />
+
+  <div className="flex items-center gap-3">
+
+    {/* Messages link with unread badge */}
+    <Link
+  to="/messages"
+  className="relative text-sm text-brand-teal font-medium hover:underline inline-flex items-center gap-1 pr-5"
+>
+  💬 Messages
+
+  {unreadCount > 0 && (
+    <span className="absolute -top-2 -right-1 bg-red-500 text-white text-xs min-w-4 h-4 px-1 rounded-full flex items-center justify-center font-bold">
+      {unreadCount > 9 ? '9+' : unreadCount}
+    </span>
+  )}
+</Link>
+
+    <Link
+      to="/artisan/edit-profile"
+      className="text-sm text-brand-slate font-medium hover:underline"
+    >
+      Edit Profile
+    </Link>
+
+    <button
+      onClick={handleLogout}
+      className="text-sm bg-red-50 text-red-500 border border-red-200 px-4 py-1.5 rounded-lg hover:bg-red-100 transition-all"
+    >
+      Logout
+    </button>
+
+  </div>
+</nav>
 
       <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
         {successMessage && (

@@ -12,6 +12,8 @@ import SubmitVerification from './pages/artisan/SubmitVerification'
 import EditProfile from './pages/artisan/EditProfile'
 import PublicProfile from './pages/artisan/PublicProfile'
 import JobRequestForm from './pages/client/JobRequestForm'
+import Inbox from './pages/messages/Inbox'
+import ChatWindow from './pages/messages/ChatWindow'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import ArtisanReview from './pages/admin/ArtisanReview'
 
@@ -106,7 +108,23 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+  path="/messages"
+  element={
+    <ProtectedRoute allowedRoles={['client', 'artisan']}>
+      <Inbox />
+    </ProtectedRoute>
+  }
+/>
 
+<Route
+  path="/messages/:receiverId"
+  element={
+    <ProtectedRoute allowedRoles={['client', 'artisan']}>
+      <ChatWindow />
+    </ProtectedRoute>
+  }
+/>
         {/* Admin */}
         <Route
           path="/admin-dashboard"

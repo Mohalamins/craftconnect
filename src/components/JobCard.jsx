@@ -30,8 +30,9 @@ const STATUS_STYLES = {
     label: '🚫 Cancelled',
   },
 }
-
+import { useNavigate } from 'react-router-dom' 
 export default function JobCard({ job, viewAs, onAction }) {
+  const navigate = useNavigate()
   const style = STATUS_STYLES[job?.status] || STATUS_STYLES.pending
 
   const otherParty =
@@ -138,7 +139,26 @@ export default function JobCard({ job, viewAs, onAction }) {
               🏆 Mark as Completed
             </button>
           )}
+          {/* Message button on accepted jobs */}
+{job.status === 'accepted' && (
+  <button
+    onClick={(e) => {
+      e.stopPropagation()
 
+      const otherId =
+        viewAs === 'client'
+          ? job.artisan_profiles?.user_id
+          : job.client_id
+
+      if (!otherId) return
+
+      navigate(`/messages/${otherId}`)
+    }}
+    className="flex-1 border border-brand-teal text-brand-teal rounded-xl py-2 text-xs font-semibold hover:bg-brand-light transition-all"
+  >
+    💬 Message
+  </button>
+)}
           {/* Client Actions */}
           {viewAs === 'client' && job?.status === 'pending' && (
             <button

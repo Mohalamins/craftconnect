@@ -3,6 +3,7 @@ import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../supabaseClient'
 import JobCard from '../../components/JobCard'
+import { useUnreadCount } from '../../utils/useUnreadCount' 
 import logo from '../../assets/logo.png'
 
 const TABS = ['Active', 'Completed', 'All']
@@ -26,6 +27,7 @@ export default function ClientDashboard() {
     location.state?.successMessage || ''
   )
   const [declineModal, setDeclineModal] = useState(null)
+  const unreadCount = useUnreadCount(profile?.id)
 
   useEffect(() => {
     if (profile) fetchJobs()
@@ -46,7 +48,7 @@ export default function ClientDashboard() {
       .select(`
         *,
         artisan_profiles!jobs_artisan_id_fkey (
-          trade, city, avatar_url,
+          user_id,trade, city, avatar_url,
           users!artisan_profiles_user_id_fkey (
             full_name
           )
@@ -96,12 +98,28 @@ export default function ClientDashboard() {
       <nav className="bg-white border-b border-brand-border px-6 py-4 flex items-center justify-between shadow-sm">
         <img src={logo} alt="CraftConnect" className="h-14 w-auto" />
         <div className="flex items-center gap-3">
-          <Link
-            to="/search"
-            className="text-sm text-brand-teal font-medium hover:underline"
-          >
-            Find Artisans
-          </Link>
+         
+           {/* Messages */}
+<Link
+  to="/messages"
+  className="relative text-sm text-brand-teal font-medium hover:underline inline-flex items-center gap-1"
+>
+  💬 Messages
+
+  {unreadCount > 0 && (
+  <span className="absolute -top-2 left-2 bg-red-500 text-white text-[10px] min-w-3.5 h-3.5 px-1 rounded-full flex items-center justify-center font-bold">
+    {unreadCount > 9 ? '9+' : unreadCount}
+  </span>
+)}
+</Link>
+
+{/* Back Home */}
+<Link
+  to="/"
+  className="text-sm text-brand-teal font-medium hover:underline"
+>
+  ← Back Home
+</Link>
           <button
             onClick={handleLogout}
             className="text-sm bg-red-50 text-red-500 border border-red-200 px-4 py-1.5 rounded-lg hover:bg-red-100 transition-all"
